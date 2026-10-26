@@ -15,6 +15,9 @@ struct ContentView: View {
             Text(statusText)
                 .foregroundStyle(peers.connectedPeers.isEmpty ? .secondary : Color.green)
 
+            Toggle("핸즈프리 (이어폰 권장)", isOn: $peers.handsFree)
+                .padding(.horizontal, 24)
+
             Spacer()
 
             if peers.isReceiving {
@@ -27,13 +30,13 @@ struct ContentView: View {
                     .frame(width: 220, height: 220)
                     .scaleEffect(peers.isTalking ? 1.08 : 1)
                     .animation(.easeOut(duration: 0.15), value: peers.isTalking)
-                Text(peers.isTalking ? "말하는 중" : "누르고 말하기")
+                Text(peers.handsFree ? "핸즈프리 켜짐" : (peers.isTalking ? "말하는 중" : "누르고 말하기"))
                     .font(.title3.bold())
                     .foregroundStyle(.white)
             }
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { _ in peers.beginTalking() }
+                    .onChanged { _ in if !peers.handsFree { peers.beginTalking() } }
                     .onEnded { _ in peers.endTalking() }
             )
 

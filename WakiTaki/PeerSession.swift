@@ -5,6 +5,8 @@ import UIKit
 final class PeerSession: NSObject, ObservableObject {
     @Published var connectedPeers: [String] = []
     @Published var isTalking = false
+    /// true면 버튼 없이 말소리가 감지될 때만 자동 전송한다 (이어폰 사용 권장).
+    @Published var handsFree = false { didSet { updateCapture() } }
     @Published var isReceiving = false
     @Published var errorMessage: String?
 
@@ -15,6 +17,9 @@ final class PeerSession: NSObject, ObservableObject {
     private lazy var browser = MCNearbyServiceBrowser(peer: myPeerID, serviceType: serviceType)
     private let audio = AudioEngine()
     private var receiveTimer: Timer?
+    private var lastVoiceTime = Date.distantPast
+    private let voiceThreshold: Double = 500   // Int16 RMS 기준
+    private let voiceHangover: TimeInterval = 0.6
 
     override init() {
         super.init()
@@ -45,17 +50,38 @@ final class PeerSession: NSObject, ObservableObject {
     func endTalking() {
         guard isTalking else { return }
         isTalking = false
-        audio.stopCapture()
+        if !handsFree { audio.stopCapture() }
     }
 
     private func send(_ data: Data) {
         guard !session.connectedPeers.isEmpty else { return }
+        if handsFree && !isVoice(data) { return }
         try? session.send(data, toPeers: session.connectedPeers, with: .unreliable)
+    }
+
+    /// 말소리가 감지된 직후 잠시(hangover) 동안은 계속 전송해 단어 끝이 잘리지 않게 한다.
+    private func isVoice(_ data: Data) -> Bool {
+        let count = data.count / MemoryLayout<Int16>.size
+        guard count > 0 else { return false }
+        let sumSquares = data.withUnsafeBytes { raw -> Double in
+            raw.bindMemory(to: Int16.self).reduce(0) { $0 + Double($1) * Double($1) }
+        }
+        if (sumSquares / Double(count)).squareRoot() > voiceThreshold { lastVoiceTime = Date() }
+        return Date().timeIntervalSince(lastVoiceTime) < voiceHangover
+    }
+
+    private func updateCapture() {
+        if handsFree && !connectedPeers.isEmpty {
+            audio.startCapture()
+        } else if !isTalking {
+            audio.stopCapture()
+        }
     }
 
     private func refreshPeers() {
         connectedPeers = session.connectedPeers.map(\.displayName)
         if connectedPeers.isEmpty { endTalking() }
+        updateCapture()
     }
 }
 

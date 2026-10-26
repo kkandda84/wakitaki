@@ -16,6 +16,9 @@ final class AudioEngine {
         try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
         try session.setActive(true)
 
+        // 에코/잡음 제거. 실패해도 기본 동작은 가능하다.
+        try? engine.inputNode.setVoiceProcessingEnabled(true)
+
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: playFormat)
         try engine.start()
