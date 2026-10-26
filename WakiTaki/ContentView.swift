@@ -15,6 +15,17 @@ struct ContentView: View {
             Text(statusText)
                 .foregroundStyle(peers.connectedPeers.isEmpty ? .secondary : Color.green)
 
+            VStack(spacing: 2) {
+                Text(peers.debugStatus)
+                Text("\(peers.audioStatus) · 보냄 \(peers.sentCount) · 받음 \(peers.receivedCount)")
+                Text("보낸 크기 \(peers.sentPeak) · 받은 크기 \(peers.receivedPeak)")
+                Text(peers.playState)
+            }
+            .font(.caption).foregroundStyle(.secondary)
+
+            Button("소리 테스트") { peers.playTestTone() }
+                .buttonStyle(.bordered)
+
             Toggle("핸즈프리 (이어폰 권장)", isOn: $peers.handsFree)
                 .padding(.horizontal, 24)
 
